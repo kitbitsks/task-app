@@ -1,8 +1,9 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
+const bcrypt = require('bcryptjs')
+var jwt = require('jsonwebtoken')
 
-// User model
-const User = mongoose.model("User",{
+const userSchema = new mongoose.Schema({
     name : {
         type : String,
         required : true,
@@ -11,6 +12,7 @@ const User = mongoose.model("User",{
     email : {
         type : String,
         required : true,
+        unique : true,
         trim : true,
         validate(value){
             if(!validator.isEmail(value)){
@@ -40,18 +42,42 @@ const User = mongoose.model("User",{
             }
         }
 
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 })
 
-// const transactionForUser = new User({
-//     name : "Sourav",
-//     password : "passwor123"
-// })
+userSchema.pre("save", async function(next){
+    const user = this
+    if (user.isModified('password')){
+        user.password = await bcrypt.hash(user.password, 8)
+    }
+    next()
+})
 
-// transactionForUser.save().then((res)=>{
-//     console.log(res)
-// }).catch((err)=>{
-//     console.log(err)
-// })
+userSchema.methods.generateToken = async function(){
+    const user = this
+    const token = jwt.sign({'_id' : (user._id).toString()}, "taskApplication2021")
+    user.tokens = user.tokens.concat({ token })
+    await user.save() 
+    return token
+}
 
+userSchema.statics.findByCredentials = async (email,password) =>{
+    const user = await User.findOne({email})
+    if (!user){
+        return new Error("Unable to login !")
+    }
+    const isMatch = await bcrypt.compare(password, user.password)
+    if(!isMatch){
+        return new Error("Unable to login !")
+    }
+    return user
+}
+
+const User = mongoose.model("User",userSchema)
 module.exports = User

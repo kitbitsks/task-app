@@ -1,8 +1,9 @@
 const express = require('express')
+const { update } = require('../models/task')
 const Task = require('../models/task')
 const router = new express.Router()
 
-//endpoint to create tasks
+
 router.post('/task/create',async (req,res)=>{
     const task = new Task(req.body)
     try{
@@ -42,8 +43,11 @@ router.get('/tasks/:id',async (req, res)=>{
 
 
 router.patch('/tasks/:id',async (req,res)=>{
+    const updates = Object.keys(req.body)
     try{
-        const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new : true, runValidators: true})
+        const task = await Task.findById(req.params.id)
+        updates.forEach((update) => task[update] = req.body[update])
+        await task.save()
         if (!task){
             return res.status(404).send()
         }
