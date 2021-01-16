@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const User = require('../models/user')
 
 const taskSchema = new mongoose.Schema({
     task_name : {
@@ -16,6 +17,11 @@ const taskSchema = new mongoose.Schema({
     task_status : {
         type : Boolean,
         default : false
+    },
+    owner : {
+        type : mongoose.Schema.Types.ObjectId,
+        required : true,
+        ref : 'User'
     }
 })
 
