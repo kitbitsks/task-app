@@ -2,6 +2,7 @@ const express = require('express')
 const { update } = require('../models/task')
 const Task = require('../models/task')
 const auth = require('../middleware/auth')
+require('../models/user')
 const router = new express.Router()
 
 
@@ -21,11 +22,19 @@ router.post('/tasks/create', auth, async (req,res)=>{
 
 
 router.get('/tasks', auth, async (req, res)=>{
+    var queryValue = {}
+    if(req.query.completed)
+    {
+        queryValue = {
+            task_status : (req.query.completed === 'true')
+        }
+    }
     try{
-        const task = await Task.find({'owner':req.user._id})
-        // await req.user.populate('tasks').execPopulate()
-        // console.log('sks')
-        res.send(task)
+        await req.user.populate({
+            'path' : 'tasks',
+            'match' : queryValue
+        }).execPopulate()
+        res.send(req.user.tasks)
     }
     catch(e){
         res.status(500).send()
