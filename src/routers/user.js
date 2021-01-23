@@ -2,6 +2,8 @@ const express = require('express')
 const { ObjectId } = require('mongodb')
 const User = require('../models/user')
 const auth = require('../middleware/auth')
+const sharp = require('sharp')
+var multer  = require('multer')
 
 const router = new express.Router()
 
@@ -82,5 +84,65 @@ router.post('/users/logout-all', auth, async(req,res) => {
     }
 })
 
+router.post('/users/logout-all', auth, async(req,res) => {
+    try{
+        req.user.tokens = []
+        await req.user.save()
+        res.send({'message': 'Logged out of All devices !'})
+    }
+    catch(e){
+        res.status(500).send()
+    }
+})
+
+const upload = multer({
+    dest: 'avatars',
+    limits: {
+        fileSize: 1000000
+    },
+    fileFilter(req, file, cb) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            return cb(new Error('Please upload an image'))
+        }
+
+        cb(undefined, true)
+    }
+})
+
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+    const buffer = await sharp(req.file.filename).resize(250, 250).png().toBuffer()
+    console.log(buffer)
+    req.user.avatar = buffer
+    await req.user.save()
+    res.send()
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message })
+})
+
+router.delete('/users/me/avatar', auth,  async(req,res)=>{
+    try{
+        req.user.avatar = undefined
+        await req.user.save()
+        res.send(req.user)
+    }
+   catch(e){
+        res.status(500).send()
+    }
+})
+
+router.get('/users/:id/avatar',  async(req,res)=>{
+    try{
+        const user = await User.findById(req.params.id)
+        if(!user || !user.avatar){
+            throw new Error()
+        }
+        res.set('Content-Type','image/png')
+        console.log(user.avatar)
+        res.send(user.avatar)
+    }
+   catch(e){
+        res.status(500).send()
+    }
+})
 
 module.exports = router
